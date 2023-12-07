@@ -171,7 +171,7 @@ const DashboardScreen = () => {
                 data={displayedHeadlines}
                 renderItem={renderHeadlineItem}
                 keyExtractor={(headline, index) => `${index}-${headline}`}
-                style={[styles.scrollView, { padding: 5 }]}
+                style={styles.scrollView}
                 showsVerticalScrollIndicator={true}
                 onRefresh={onRefresh}
                 refreshing={isRefreshing}
@@ -209,8 +209,8 @@ const styles = StyleSheet.create({
         elevation: 5,
     },
     scrollView: {
-        flexGrow: 1,
-        // minHeight:'60%'
+        flex: 1,
+        padding: 5 ,
     },
     deleteBox: {
         backgroundColor: 'red',
