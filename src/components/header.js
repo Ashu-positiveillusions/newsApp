@@ -7,13 +7,12 @@ const CustomHeader = () => {
     const route = useRoute();
 
     const getTitle = () => {
-        // Define a way to determine the title based on the route
-        // For example, you can use route.name or any custom logic
+        // display the title of the screen or any thing in the header based on the 
+        // route name
         const routeName = route.name;
         switch (routeName) {
             case 'Dashboard':
                 return 'Headlines';
-            // Add more cases as needed for other screens
             default:
                 return 'App';
         }
@@ -32,7 +31,6 @@ const styles = StyleSheet.create({
     headerContainer: {
         height: 60,
         backgroundColor: '#000000',
-        // alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },

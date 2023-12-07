@@ -45,35 +45,37 @@ const DashboardScreen = () => {
             console.error(error);
         }
     };
+
+    //this will configure and create a background task
+    //which will fetch the headlines wven when the app is 
+    // in background
     const configureBackgroundFetch = async () => {
         console.log("configure background tasks")
         BackgroundFetch.configure(
-          {
-            minimumFetchInterval: 15, // <-- minutes (15 is minimum allowed)
-            stopOnTerminate: false, // <-- Android-only,
-            startOnBoot: true, // <-- Android-only
-          },
-          async (taskId) => {
-            console.log('[BackgroundFetch] taskId:', taskId);
-            await fetchHeadlines();
-            BackgroundFetch.finish(taskId);
-          },
-          (error) => {
-            console.error('[BackgroundFetch] failed to start', error);
-          }
+            {
+                minimumFetchInterval: 15,
+                stopOnTerminate: false,
+                startOnBoot: true,
+            },
+            async (taskId) => {
+                console.log('[BackgroundFetch] taskId:', taskId);
+                await fetchHeadlines();
+                BackgroundFetch.finish(taskId);
+            },
+            (error) => {
+                console.error('[BackgroundFetch] failed to start', error);
+            }
         );
-      };
+    };
 
+    //this will delete the headline that is swiped by the user from left to right
+    // it will update the displayed headlines
+    // it will update the full headline list and also update in local storage
     const handleDeleteHeadline = async (headline) => {
-        // Update displayed headlines
         const newDisplayedHeadlines = displayedHeadlines.filter(h => h !== headline);
         setDisplayedHeadlines(newDisplayedHeadlines);
-
-        // Update full headline list
         const newHeadlines = headlines.filter(h => h !== headline);
         setHeadlines(newHeadlines);
-
-        // Update local storage
         try {
             await AsyncStorage.setItem('headlines', JSON.stringify(newHeadlines));
         } catch (e) {
@@ -84,23 +86,26 @@ const DashboardScreen = () => {
         setPinnedHeadlines([headline, ...pinnedHeadlines])
     }
 
-    // Function to initialize or reset the timer
+    // this will initialize and reset timer
     const initializeUpdateTimer = () => {
-        clearInterval(intervalRef.current); // Clear existing timer
+        clearInterval(intervalRef.current);
         intervalRef.current = setInterval(() => {
             updateHeadlines();
-        }, 10000); // Set new timer
+        }, 10000);
     };
-
-    // Reference to store the interval ID
     const intervalRef = useRef(null);
-    useEffect(()=>{
+
+    // use effect to run only once and create a background fetch task
+    useEffect(() => {
         const init = async () => {
             await configureBackgroundFetch();
         }
         init();
-    },[])
+        // clear the interval when component unmounts
+        return () => clearInterval(intervalRef.current); 
+    }, [])
 
+    //this useEffect wil run everytime the length of headlines array changes
     useEffect(() => {
         const init = async () => {
             try {
@@ -116,35 +121,28 @@ const DashboardScreen = () => {
                 console.error(e);
             }
         };
-
         init();
-
-        // Set an interval to update headlines every 10 seconds
         initializeUpdateTimer();
-
-        return () => clearInterval(intervalRef.current); // Clear interval on component unmount
     }, [headlines.length]);
 
+    // clear local storage if all headlines displayed
+    // randomly upate 5 headlines
+    // update the display headlines and headlines in state and async storage
     const updateHeadlines = async () => {
         if (headlines.length === 0) {
-            await AsyncStorage.removeItem('headlines'); // Clear local storage if all headlines have been displayed
+            await AsyncStorage.removeItem('headlines');
             await fetchHeadlines();
             return;
         }
-        // Randomly pick 5 new headlines that have not been displayed yet
         let newHeadlines = [];
-        let updatedHeadlines = [...headlines]; // Create a copy of the headlines array to modify
+        let updatedHeadlines = [...headlines];
 
         while (newHeadlines.length < 5 && updatedHeadlines.length > 0) {
             const randomIndex = Math.floor(Math.random() * updatedHeadlines.length);
             newHeadlines.push(updatedHeadlines[randomIndex]);
-            updatedHeadlines.splice(randomIndex, 1); // Remove the selected headline from the copied array
+            updatedHeadlines.splice(randomIndex, 1);
         }
-
-        // Update the displayed headlines - add new headlines to the start and keep the total length at 10
         setDisplayedHeadlines(newHeadlines.concat(displayedHeadlines.slice(0, 5)));
-
-        // Update headlines in local storage and state
         try {
             await AsyncStorage.setItem('headlines', JSON.stringify(updatedHeadlines));
             setHeadlines(updatedHeadlines); // Update the headlines state with the new array
@@ -153,14 +151,15 @@ const DashboardScreen = () => {
         }
     };
 
+    //function will be called for pull to refresh functionality
     const onRefresh = async () => {
         setIsRefreshing(true);
-        // Call your update function here
         await updateHeadlines();
         setIsRefreshing(false);
         initializeUpdateTimer();
     };
 
+    // component to render the headline items
     const renderHeadlineItem = ({ item: headline, index }) => {
         return (
             <Swipeable
@@ -233,7 +232,7 @@ const styles = StyleSheet.create({
     },
     scrollView: {
         flex: 1,
-        padding: 5 ,
+        padding: 5,
     },
     deleteBox: {
         backgroundColor: 'red',
