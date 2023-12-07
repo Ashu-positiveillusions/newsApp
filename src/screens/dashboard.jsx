@@ -46,6 +46,7 @@ const DashboardScreen = () => {
         }
     };
     const configureBackgroundFetch = async () => {
+        console.log("configure background tasks")
         BackgroundFetch.configure(
           {
             minimumFetchInterval: 15, // <-- minutes (15 is minimum allowed)
@@ -93,12 +94,16 @@ const DashboardScreen = () => {
 
     // Reference to store the interval ID
     const intervalRef = useRef(null);
-
+    useEffect(()=>{
+        const init = async () => {
+            await configureBackgroundFetch();
+        }
+        init();
+    },[])
 
     useEffect(() => {
         const init = async () => {
             try {
-                await configureBackgroundFetch();
                 const storedHeadlines = await AsyncStorage.getItem('headlines');
                 if (storedHeadlines !== null) {
                     const storedHeadlinesArray = JSON.parse(storedHeadlines);
