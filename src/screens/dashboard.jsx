@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, FlatList, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 // import BackgroundFetch from 'react-native-background-fetch';
@@ -8,17 +8,29 @@ import { API_KEY } from "@env";
 const DashboardScreen = () => {
     const [headlines, setHeadlines] = useState([]);
     const [displayedHeadlines, setDisplayedHeadlines] = useState([]);
+    const [pinnedHeadlines, setPinnedHeadlines] = useState([]);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     const renderRightActions = (headline) => {
-        // You can customize this function to render the swipe action UI
         return (
             <View style={styles.deleteBox}>
                 <Text style={styles.deleteText}>Delete</Text>
             </View>
         );
     };
+    const renderLeftActions = (headline) => {
+        return (
+            <View style={styles.pinBox}>
+                <Text style={styles.pinText}>Pin</Text>
+            </View>
+        );
+    };
     const onSwipeableOpen = (headline, direction) => {
         if (direction === 'right') {
             handleDeleteHeadline(headline);
+        }
+        if (direction === 'left') {
+            handlePinnedHeadline(headline);
         }
     };
     const fetchHeadlines = async () => {
@@ -50,6 +62,21 @@ const DashboardScreen = () => {
             console.error('Failed to update headlines in local storage', e);
         }
     };
+    const handlePinnedHeadline = async (headline) => {
+        setPinnedHeadlines([headline, ...pinnedHeadlines])
+    }
+
+    // Function to initialize or reset the timer
+    const initializeUpdateTimer = () => {
+        clearInterval(intervalRef.current); // Clear existing timer
+        intervalRef.current = setInterval(() => {
+            updateHeadlines();
+        }, 10000); // Set new timer
+    };
+
+    // Reference to store the interval ID
+    const intervalRef = useRef(null);
+
 
     useEffect(() => {
         const init = async () => {
@@ -70,11 +97,9 @@ const DashboardScreen = () => {
         init();
 
         // Set an interval to update headlines every 10 seconds
-        const interval = setInterval(() => {
-            updateHeadlines();
-        }, 10000);
+        initializeUpdateTimer();
 
-        return () => clearInterval(interval); // Clear interval on component unmount
+        return () => clearInterval(intervalRef.current); // Clear interval on component unmount
     }, [headlines.length]);
 
     const updateHeadlines = async () => {
@@ -104,22 +129,54 @@ const DashboardScreen = () => {
             console.error('Failed to update headlines in local storage', e);
         }
     };
+
+    const onRefresh = async () => {
+        setIsRefreshing(true);
+        // Call your update function here
+        await updateHeadlines();
+        setIsRefreshing(false);
+        initializeUpdateTimer();
+    };
+
+    const renderHeadlineItem = ({ item: headline, index }) => {
+        return (
+            <Swipeable
+                key={index + headline}
+                renderRightActions={() => renderRightActions(headline)}
+                onSwipeableOpen={(direction) => onSwipeableOpen(headline, direction)}
+                renderLeftActions={() => renderLeftActions(headline)}
+            >
+                <Text style={styles.headline}>
+                    {headline}
+                </Text>
+            </Swipeable>
+        );
+    };
     return (
-        <View style={styles.container}>
-            <ScrollView style={styles.scrollView}>
-                {displayedHeadlines.map((headline, index) => (
-                    <Swipeable
-                        key={index}
-                        renderRightActions={() => renderRightActions(headline)}
-                        onSwipeableOpen={(direction) => onSwipeableOpen(headline, direction)}
-                    >
-                        <Text style={styles.headline}>
-                            {headline}
-                        </Text>
-                    </Swipeable>
-                ))}
-            </ScrollView>
-        </View>
+        <SafeAreaView style={styles.container}>
+            {pinnedHeadlines.length ? (
+                <View style={{ maxHeight: '40%' }}>
+                    <Text style={styles.pinnedHeading}>Pinned Headlines</Text>
+                    <ScrollView >
+                        {pinnedHeadlines.map((headline, index) => (
+                            <Text key={index + headline} style={styles.headline}>
+                                {headline}
+                            </Text>
+                        ))}
+                    </ScrollView>
+                    <Text style={styles.pinnedHeading}>Other Headlines</Text>
+                </View>
+            ) : null}
+            <FlatList
+                data={displayedHeadlines}
+                renderItem={renderHeadlineItem}
+                keyExtractor={(headline, index) => `${index}-${headline}`}
+                style={[styles.scrollView, { padding: 5 }]}
+                showsVerticalScrollIndicator={true}
+                onRefresh={onRefresh}
+                refreshing={isRefreshing}
+            />
+        </SafeAreaView>
     );
 };
 
@@ -128,6 +185,7 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         backgroundColor: 'black',
         padding: 10,
+        paddingHorizontal: 20
     },
     title: {
         color: '#fff',
@@ -140,19 +198,59 @@ const styles = StyleSheet.create({
         fontSize: 16,
         marginBottom: 10,
         padding: 10,
-        backgroundColor: '#1c1c1e', // A slightly different background for contrast
+        backgroundColor: '#1c1c1e',
         borderWidth: 1,
-        borderColor: '#2a2a2a', // Light border color
-        borderRadius: 5, // Rounded corners
-        shadowColor: '#000', // Shadow for a subtle depth effect
+        borderColor: '#2a2a2a',
+        borderRadius: 5,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-        elevation: 5, // Elevation for Android
+        elevation: 5,
     },
     scrollView: {
         flexGrow: 1,
+        // minHeight:'60%'
     },
+    deleteBox: {
+        backgroundColor: 'red',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        marginBottom: 10,
+        borderTopRightRadius: 5,
+        borderBottomRightRadius: 5,
+        width: '30%'
+    },
+    deleteText: {
+        color: '#fff',
+        fontWeight: '700',
+    },
+    pinBox: {
+        backgroundColor: 'green',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+        marginBottom: 10,
+        borderTopLeftRadius: 5,
+        borderBottomLeftRadius: 5,
+        width: '30%'
+    },
+    pinText: {
+        color: '#fff',
+        fontWeight: '700',
+    },
+    pinnedHeading: {
+        color: '#c7c7c7',
+        fontWeight: 'bold',
+        marginVertical: 10,
+        marginLeft: 2
+    },
+    pinnedBox: {
+        // backgroundColor:'#2a2a2a',
+        // marginVertical:10,
+        // padding:10,
+    }
 });
 
 export default DashboardScreen;
