@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
-// import BackgroundFetch from 'react-native-background-fetch';
+import BackgroundFetch from 'react-native-background-fetch';
 import { API_KEY } from "@env";
 
 const DashboardScreen = () => {
@@ -45,6 +45,23 @@ const DashboardScreen = () => {
             console.error(error);
         }
     };
+    const configureBackgroundFetch = async () => {
+        BackgroundFetch.configure(
+          {
+            minimumFetchInterval: 15, // <-- minutes (15 is minimum allowed)
+            stopOnTerminate: false, // <-- Android-only,
+            startOnBoot: true, // <-- Android-only
+          },
+          async (taskId) => {
+            console.log('[BackgroundFetch] taskId:', taskId);
+            await fetchHeadlines();
+            BackgroundFetch.finish(taskId);
+          },
+          (error) => {
+            console.error('[BackgroundFetch] failed to start', error);
+          }
+        );
+      };
 
     const handleDeleteHeadline = async (headline) => {
         // Update displayed headlines
@@ -81,6 +98,7 @@ const DashboardScreen = () => {
     useEffect(() => {
         const init = async () => {
             try {
+                await configureBackgroundFetch();
                 const storedHeadlines = await AsyncStorage.getItem('headlines');
                 if (storedHeadlines !== null) {
                     const storedHeadlinesArray = JSON.parse(storedHeadlines);

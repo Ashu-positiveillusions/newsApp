@@ -13,13 +13,17 @@ buildscript {
     repositories {
         google()
         mavenCentral()
-    //     maven {
-    //       // react-native-background-fetch
-    //       url("${project(':react-native-background-fetch').projectDir}/libs")
-    //   }
     }
     dependencies {
         classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
+    }
+}
+
+allprojects {
+    repositories {
+         maven {
+            url("${project(':react-native-background-fetch').projectDir}/libs")
+        }
     }
 }
